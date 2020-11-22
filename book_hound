@@ -1,0 +1,82 @@
+"""
+This script try to use the goodreads API to create a basic book recommendation engine
+
+The idea is to input book 1, then see all users who liked/read this book
+    --> then show book lists from what those users enjoyed
+    --> as more books are selected by the user, the "web" of users who liked those same books grows smaller
+        --> thus, recommendations get better
+
+Michael Ershov
+November 21, 2020
+"""
+
+
+#---------------------------------------------------------#
+#             Goodreads Developer Info                    #
+#---------------------------------------------------------#
+#  Key     |  TmTYAY21ToboVwhfnfk5A                       #
+#  Secret  |  yjODNudngs6Hb6ilKyODWGw1ZdDOU2eyaBTgbW5DNI  #
+#---------------------------------------------------------#
+
+
+
+# from goodreads import client
+import goodreads as vanilla_gr
+import goodreads_api_client as gr
+
+import time
+
+
+
+API_KEY    = 'TmTYAY21ToboVwhfnfk5A'
+API_SECRET = 'yjODNudngs6Hb6ilKyODWGw1ZdDOU2eyaBTgbW5DNI'
+
+
+client = gr.Client(developer_key=API_KEY)
+#Example: get 'The Last Wish' to see what parameters show up
+book = client.Book.show('1128434')
+print(book)
+
+print('sleeping zzz...')
+time.sleep(1) #stop for 1s (avoid API violation)
+
+
+
+#Show a ~random~ specific review info
+review = client.Review.show('3805')
+print(review)
+
+print('sleeping zzz...')
+time.sleep(1) #stop for 1s (avoid API violation)
+
+
+
+#Look at the book title?
+book_title = client.Book.title('The Last Wish')
+print(book_title)
+bt_work = book_title['work']
+print(bt_work)
+
+
+print('sleeping zzz...')
+time.sleep(1) #stop for 1s (avoid API violation)
+
+
+
+
+
+
+# breakpoint hold
+pass
+
+
+
+
+
+
+
+
+
+
+
+

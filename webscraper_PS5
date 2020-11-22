@@ -1,0 +1,68 @@
+"""
+This script will attempt to query certain websites to check their product stock
+If there is stock, it will attempt to open the webpage and text my number that there is stock
+
+Michael Ershov
+November 21, 2020
+"""
+
+import requests
+import urllib.request
+from selenium import webdriver
+from bs4 import BeautifulSoup
+
+
+website_str = 'https://stackoverflow.com/questions/57212573/modulenotfounderror-no-module-named-requests-in-pycharm'
+walmart_site = 'https://www.walmart.com/ip/Sony-PlayStation-5-Digital-Edition/493824815'
+
+
+#------------------------------------------------------#
+#                                                      #
+#       Below is beautiful soup implementation         #
+#                                                      #
+#------------------------------------------------------#
+
+driver = webdriver.Chrome("/usr/lib/chromium-browser/chromedriver")
+driver.get(walmart_site)
+content = driver.page_source
+soup = BeautifulSoup(content)
+
+
+#------------------------------------------------------#
+#                                                      #
+#            Below is urllib implementation            #
+#                                                      #
+#------------------------------------------------------#
+
+page = urllib.request.urlopen(walmart_site)
+print(page.read())
+print(len(page.read()))
+
+
+
+#------------------------------------------------------#
+#                                                      #
+#           Below is request implementation            #
+#                                                      #
+#------------------------------------------------------#
+r = requests.get(walmart_site)
+print(r.status_code)
+print(r.text[0:100])
+
+#Let's try to search for some keywords
+keyword = 'PlayStation'
+lenK = len(keyword)
+textWindow = 50
+print('keyword is:' + str(keyword))
+
+print('Start searching loop...')
+for i in range(len(r.text) - lenK):
+    if r.text[i : i+lenK] == keyword:
+        print('Found key at ' + str(i))
+        #Print the surrounding text displayed on the page
+        try:
+            print(r.text[i-textWindow : i+lenK+textWindow])
+        except:
+            print('Index too close to either end of the total text')
+
+
