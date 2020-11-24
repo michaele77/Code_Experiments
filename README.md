@@ -1,7 +1,4 @@
 # Code Experiments 
-[![Build Status]
-[![Windows Build Status]
-[![js-standard-style]
 
 This is a place where I experiment with different packages, new modules, or start the prototyping for new project ideas. Most of this repository is written in Python for speed of development, code readability, and the large availability of modules to simplify implementation.
 
