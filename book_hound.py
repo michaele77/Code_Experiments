@@ -12,24 +12,33 @@ November 21, 2020
 
 
 #---------------------------------------------------------#
-#             Goodreads Developer Info                    #
+#             Goodreads API Access Attempt                #
 #---------------------------------------------------------#
-#  Key     |  TmTYAY21ToboVwhfnfk5A                       #
-#  Secret  |  yjODNudngs6Hb6ilKyODWGw1ZdDOU2eyaBTgbW5DNI  #
-#---------------------------------------------------------#
+
 
 
 
 # from goodreads import client
 import goodreads as vanilla_gr
 import goodreads_api_client as gr
-
 import time
+import os
 
+#grab the current execution file path name, return from code if not found
+exec_path = os.path.realpath(__file__)
+exec_path_bare = exec_path.split('/')[-1] #split up sptring on '/' char, output last bit (which is the file name)
+print('Executing file name: ' + exec_path_bare)
 
+try:
+    import config
+    API_KEY, API_SECRET = config.access_keys(exec_path_bare)
+    print('Importing config file successful!')
+    print('-----')
+except ImportError as import_err:
+    print('ERROR: ' + str(import_err))
+    print('Add correct config.py file with API Keys then try again')
+    quit() #stop running the code if no config.py file found
 
-API_KEY    = 'TmTYAY21ToboVwhfnfk5A'
-API_SECRET = 'yjODNudngs6Hb6ilKyODWGw1ZdDOU2eyaBTgbW5DNI'
 
 
 client = gr.Client(developer_key=API_KEY)
