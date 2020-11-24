@@ -53,5 +53,6 @@ auth = requests.auth.HTTPBasicAuth('clientid', CLIENT_ID)
 r = requests.get(yelp_url, auth=auth)
 print(r.status_code)
 print(r.json())
+print('update')
 
 pass
