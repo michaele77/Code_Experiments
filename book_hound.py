@@ -76,20 +76,53 @@ if usrIn == str(1):
 #           Goodreads Web-Scraping Attempt                #
 #---------------------------------------------------------#
 
+
 ##Code taken from stack overflow post on scraping goodreads with selenium
 ##Source: https://stackoverflow.com/questions/52794154/blocked-while-scraping-goodreads-com
 
 import time
 from bs4 import BeautifulSoup
+from bs4 import SoupStrainer
 from selenium import webdriver
+import requests
+
+
+
+def get_page(fnc_url_link):
+    try:
+        # start session and get the search page
+        session = requests.Session()
+        response = session.get(fnc_url_link)
+
+        # parse the search page using SoupStrainer and lxml
+        strainer = SoupStrainer('form', attrs={'id': 'form1'})
+        soup_toreturn = BeautifulSoup(response.content, 'lxml', parse_only=strainer)
+
+    except:
+        driver.get(fnc_url_link)
+        soup_toreturn = BeautifulSoup(driver.page_source, 'lxml')
+
+    return soup_toreturn
+
+
+
 ##copy chromedriver into python folder, or just pass to it its path
 ##Currently, chromedriver binary lives in /usr/local/bin/
-driver = webdriver.Chrome()
+
+#Make the chrome driver headless for speed improvement
+chrome_options = webdriver.chrome.options.Options()
+chrome_options.add_argument("--headless")
+
+driver = webdriver.Chrome(options=chrome_options)
+
 #driver.set_window_position(-2000,0)#this function will minimize the window
 # first_url = 1
 # last_url = 10000     # Last book is 8,630,000
 
 url_location = 'https://www.goodreads.com/book/show/'
+
+
+
 
 
 
@@ -123,9 +156,10 @@ url_location = 'https://www.goodreads.com/book/show/'
 
 urlNum = [1]
 
+currTime = time.time()
 for book_reference_number in urlNum:
-    driver.get(url_location+str(book_reference_number))
-    soup = BeautifulSoup(driver.page_source, 'lxml')
+
+    soup = get_page(url_location+str(book_reference_number))
 
     #Get general book info
     book_info = {}
@@ -150,18 +184,33 @@ for book_reference_number in urlNum:
 
         #Step into the user's page
         goodreads_root = 'https://www.goodreads.com'
-        driver.get(goodreads_root + reviewer_info[i]['link'])
-        user_soup = BeautifulSoup(driver.page_source, 'lxml')
+        user_soup = get_page(goodreads_root + reviewer_info[i]['link'])
 
         #fish out the ratings link on the top left hand corner of the user's page
         #add it to the dictionary once we have it
-        reviewer_info[i]['ratings link'] = user_soup.select('.profilePageUserStatsInfo')[0].contents[1].attrs['href']
+        try:
+            reviewer_info[i]['ratings link'] = user_soup.select('.profilePageUserStatsInfo')[0].contents[1].attrs['href']
+        except:
+            try:
+                #Author's page has a different layout type...
+                reviewer_info[i]['ratings link'] = user_soup.select('.smallText')[0].contents[1].attrs['href']
+                print('On an authors page!')
+            except:
+                #Some people make their profiles private...
+                user_text = user_soup.select('#privateProfile')[0].text
+                usertextList = []
+                usertextList.append( user_text.split('This')[1][1:20] )
+                usertextList.append( user_text.split('Sign in to ')[1].split('\n')[0] )
+
+                print('On a private page, so no content available')
+                print('From users page: {0}, {1}'.format(usertextList[0], usertextList[1]))
+                print('skipping to next reviewer')
+                continue
 
 
         #Step into the user's ratings page
         #NOTE: can change how the ratings are sorted by changing the "sort=ratings" bit
-        driver.get(goodreads_root + reviewer_info[i]['ratings link'])
-        ratings_soup = BeautifulSoup(driver.page_source, 'lxml')
+        ratings_soup = get_page(goodreads_root + reviewer_info[i]['ratings link'])
 
         #iterate through all of the ratings, add it to the dictionary as a list of dictionaries (each one being the rating)
         #TODO: figure out how to make the javascript page scroll down to refesh to get all the ratings
@@ -174,11 +223,30 @@ for book_reference_number in urlNum:
             reviewer_info[i]['ratings'].append(currRating.contents[1].contents[1].attrs) #append the rating's dictionary
             print(j)
 
-
     pass #breakpoint
 
-# breakpoint hold
-pass
+dTime = time.time() - currTime
+print('Time elapsed: {0} seconds'.format(dTime))
+print('That is {0} sec/user'.format(dTime / 30))
+
+#At this point in the program, we have the following data structure:
+#book_info     --> dict('title', 'author', 'meta', 'details', 'reviewers'
+#                          |        |        |         |          |
+#                          V        V        V         V          V
+#                         str      str      str       str     list(30*str)
+
+#reviewer_info --> list(30*dict) --> dict('name', 'link', 'ratings link', 'ratings'
+#                                           |       |           |             |
+#                                           V       V           V             V
+#                                          str     str         str      list(30+x * dict) --> dict('title', 'href')
+#                                                                                                     |        |
+#                                                                                                     V        V
+#                                                                                                    str      str
+
+#At this point, we can search and display
+
+
+pass #breakpoint
 
 
 
