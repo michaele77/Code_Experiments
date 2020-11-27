@@ -41,7 +41,7 @@ except ImportError as import_err:
 
 
 
-usrIn = input('Run the goodreads API or webscrape (1 for API)? ')
+usrIn = input('Run the goodreads API or webscrape? [1 for API]: ')
 
 if usrIn == str(1):
     client = gr.Client(developer_key=API_KEY)
@@ -87,18 +87,43 @@ from selenium import webdriver
 import requests
 
 
+use_driver = input('Use chrome driver? [1 for yes]: ')
+
 
 def get_page(fnc_url_link):
-    try:
-        # start session and get the search page
-        session = requests.Session()
-        response = session.get(fnc_url_link)
+    if not use_driver:
+        # a = 1/0 #throws a floating-point error, goes to the except (uncomment if dont want to run try code)
 
-        # parse the search page using SoupStrainer and lxml
-        strainer = SoupStrainer('form', attrs={'id': 'form1'})
-        soup_toreturn = BeautifulSoup(response.content, 'lxml', parse_only=strainer)
+        ####### REQUEST GET METHOD for URL
+        t2 = time.time()
+        r = requests.get(fnc_url_link)
+        t3 = time.time()
+        dT = t3-t2
+        print('request time = {0}'.format(dT))
 
-    except:
+        ####### DATA FROM REQUESTS.GET
+        t2 = time.time()
+        data = r.text
+        t3 = time.time()
+        dT = t3-t2
+        print('data time = {0}'.format(dT))
+
+        t2 = time.time()
+        soup_toreturn = BeautifulSoup(data, 'lxml')
+        t3 = time.time()
+        dT = t3-t2
+        print('soup time = {0}'.format(dT))
+
+
+        # # start session and get the search page
+        # session = requests.Session()
+        # response = session.get(fnc_url_link)
+        #
+        # # parse the search page using SoupStrainer and lxml
+        # strainer = SoupStrainer('form', attrs={'id': 'form1'})
+        # soup_toreturn = BeautifulSoup(response.content, 'lxml', parse_only=strainer)
+
+    elif use_driver:
         driver.get(fnc_url_link)
         soup_toreturn = BeautifulSoup(driver.page_source, 'lxml')
 
@@ -109,15 +134,13 @@ def get_page(fnc_url_link):
 ##copy chromedriver into python folder, or just pass to it its path
 ##Currently, chromedriver binary lives in /usr/local/bin/
 
-#Make the chrome driver headless for speed improvement
-chrome_options = webdriver.chrome.options.Options()
-chrome_options.add_argument("--headless")
+if use_driver:
+    #Make the chrome driver headless for speed improvement
+    chrome_options = webdriver.chrome.options.Options()
+    chrome_options.add_argument("--headless")
 
-driver = webdriver.Chrome(options=chrome_options)
+    driver = webdriver.Chrome(options=chrome_options)
 
-#driver.set_window_position(-2000,0)#this function will minimize the window
-# first_url = 1
-# last_url = 10000     # Last book is 8,630,000
 
 url_location = 'https://www.goodreads.com/book/show/'
 
@@ -184,7 +207,11 @@ for book_reference_number in urlNum:
 
         #Step into the user's page
         goodreads_root = 'https://www.goodreads.com'
+        t0 = time.time()
         user_soup = get_page(goodreads_root + reviewer_info[i]['link'])
+        t1 = time.time()
+        dT = t1 - t0
+        print('user time = {0}'.format(dT))
 
         #fish out the ratings link on the top left hand corner of the user's page
         #add it to the dictionary once we have it
@@ -210,10 +237,15 @@ for book_reference_number in urlNum:
 
         #Step into the user's ratings page
         #NOTE: can change how the ratings are sorted by changing the "sort=ratings" bit
+        t0 = time.time()
         ratings_soup = get_page(goodreads_root + reviewer_info[i]['ratings link'])
+        t1 = time.time()
+        dT = t1 - t0
+        print('ratings time = {0}'.format(dT))
 
         #iterate through all of the ratings, add it to the dictionary as a list of dictionaries (each one being the rating)
         #TODO: figure out how to make the javascript page scroll down to refesh to get all the ratings
+        #TODO: implement multi-core parallel processing: https://stackoverflow.com/questions/52748262/web-scraping-how-make-it-faster
         ratingsList = ratings_soup.select('.field.title')
         reviewer_info[i]['ratings'] = []
         for j,currRating in enumerate(ratingsList):
