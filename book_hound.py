@@ -85,15 +85,21 @@ from bs4 import BeautifulSoup
 from bs4 import SoupStrainer
 from selenium import webdriver
 import requests
+import numpy as np
 
 
 use_driver = input('Use chrome driver? [1 for yes]: ')
 
 
+
+
 def get_page(fnc_url_link):
     if not use_driver:
         # a = 1/0 #throws a floating-point error, goes to the except (uncomment if dont want to run try code)
-
+        global globalDelay
+        globalDelay += .2
+        v = urlNum
+        time.sleep(1 + globalDelay)
         ####### REQUEST GET METHOD for URL
         t2 = time.time()
         r = requests.get(fnc_url_link)
@@ -124,8 +130,19 @@ def get_page(fnc_url_link):
         # soup_toreturn = BeautifulSoup(response.content, 'lxml', parse_only=strainer)
 
     elif use_driver:
+
+        t2 = time.time()
         driver.get(fnc_url_link)
+        t3 = time.time()
+        dT = t3 - t2
+        print('get time = {0}'.format(dT))
+
+        t2 = time.time()
         soup_toreturn = BeautifulSoup(driver.page_source, 'lxml')
+        t3 = time.time()
+        dT = t3 - t2
+        print('soup time = {0}'.format(dT))
+
 
     return soup_toreturn
 
@@ -137,7 +154,7 @@ def get_page(fnc_url_link):
 if use_driver:
     #Make the chrome driver headless for speed improvement
     chrome_options = webdriver.chrome.options.Options()
-    chrome_options.add_argument("--headless")
+    # chrome_options.add_argument("--headless")
 
     driver = webdriver.Chrome(options=chrome_options)
 
@@ -178,6 +195,62 @@ url_location = 'https://www.goodreads.com/book/show/'
 #           -Get all of the user's rated books (using .bookalike.review[i] text)
 
 urlNum = [1]
+x = 136251
+urlNum = list(range(x,x+50))
+globalDelay = 0
+
+
+
+#Remove any problem books in the list
+print(urlNum)
+
+
+#Below for loop prototypes the multiprocessing attempt
+#First is the multiprocessing attempt
+
+import concurrent.futures
+MAX_THREADS = 30
+threads = min(MAX_THREADS, len(urlNum))
+comb_url_str = [url_location + str(i) for i in urlNum]
+
+
+print('Staring multiprocessing DOE...')
+tDOE_0 = time.time()
+
+with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
+    # time.sleep(1)  # to avoid the random-length HTML garbage anti-attack mechanism
+    soup = executor.map(get_page, comb_url_str)
+
+dT_DOE_0 = time.time() - tDOE_0
+print('Multiprocessing time: {0}'.format(dT_DOE_0))
+print('~~~~~~~')
+
+for i in soup:
+    try:
+        print(i.select('#bookTitle')[0].text.strip())
+    except:
+        print('Blocked!~~~~~~~~~')
+
+time.sleep(5)
+
+#Second is the vanilla attempt
+print('Staring vanilla DOE...')
+tDOE_1 = time.time()
+for book_reference_number in urlNum:
+    time.sleep(1)  # to avoid the random-length HTML garbage anti-attack mechanism
+
+    soup = get_page(url_location + str(book_reference_number))
+
+
+dT_DOE_1 = time.time() - tDOE_1
+print('Vanilla Method time: {0}'.format(dT_DOE_1))
+print('~~~~~~~')
+
+time.sleep(5)
+
+pass #BREAKPOINT
+
+
 
 currTime = time.time()
 for book_reference_number in urlNum:
@@ -244,8 +317,11 @@ for book_reference_number in urlNum:
         print('ratings time = {0}'.format(dT))
 
         #iterate through all of the ratings, add it to the dictionary as a list of dictionaries (each one being the rating)
+        #TODO: Figure out basic proxy gathering/proxy list for multithreading scraping
+        #TODO: Once a basic 30x30 structure is saved, flesh out basics for net-creation algorithm
+        #TODO: Get a prototype going
         #TODO: figure out how to make the javascript page scroll down to refesh to get all the ratings
-        #TODO: implement multi-core parallel processing: https://stackoverflow.com/questions/52748262/web-scraping-how-make-it-faster
+
         ratingsList = ratings_soup.select('.field.title')
         reviewer_info[i]['ratings'] = []
         for j,currRating in enumerate(ratingsList):
@@ -278,7 +354,35 @@ print('That is {0} sec/user'.format(dTime / 30))
 #At this point, we can search and display
 
 
+
+
 pass #breakpoint
+
+
+#---------------------------------------------------------#
+#                  Summarized Learnings                   #
+#---------------------------------------------------------#
+#
+#   1) Should either build up a SQL database through scraping beforehand for real time queries, or
+#      scrape info in real-time as it is input (probably prefer the first one)
+#
+#   2) Use multi-threading for the scraping method
+#       --> the method called when scraping should ideally be a class that assigns which
+#           books/things to scrape automatically/from a queue
+#       --> Use either N proxies (N being the number of threads active) or some VPN to avoid blocking
+#       --> Blocking occurs when accesses happen > 1 requests/sec, remain blocked for a few hours
+#       --> Implement logging so that we can scrape for some time then pause execution
+#       --> Each individual IP assigned to a "crawler" that would operate at 1 request/sec throughput
+#       --> Full throughput would simply be IP number * 1 [requests/sec]
+#       FREE PROXY LIST: https://free-proxy-list.net/
+#       PROXY IMPLEMENTATION TUTORIAL: https://www.scrapehero.com/how-to-rotate-proxies-and-ip-addresses-using-python-3/
+#
+#   3) "Tinder-lke" front end
+#       --> Swipe up for "you've read the book and liked it"         => network improves by matching common kindreds
+#       --> Swipe down for "you've read the book and didn't like it" => network improves by cutting unalike kindred
+#       --> Swipe right for "you haven't read this book, but interested" => add to will read books (no network change?)
+#       --> Swipe left for "you haven't read this book, but not interested => banned from appearing (no network change?)
+
 
 
 
