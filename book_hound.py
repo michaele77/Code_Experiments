@@ -84,6 +84,7 @@ import time
 from bs4 import BeautifulSoup
 from bs4 import SoupStrainer
 from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
 import requests
 import numpy as np
 import pickle
@@ -134,6 +135,9 @@ def get_page(fnc_url_link):
 
     elif use_driver:
 
+
+        ##Below is the old code that WORKED
+
         t2 = time.time()
         driver.get(fnc_url_link)
         t3 = time.time()
@@ -147,7 +151,67 @@ def get_page(fnc_url_link):
         print('soup time = {0}'.format(dT))
 
 
+        # ##Below is the new code for infinite scrolling
+        # ##Source: https://stackoverflow.com/questions/21006940/how-to-load-all-entries-in-an-infinite-scroll-at-once-to-parse-the-html-in-pytho
+        #
+        #
+        # t2 = time.time()
+        # driver.get(fnc_url_link)
+        # t3 = time.time()
+        # dT = t3 - t2
+        # print('get time = {0}'.format(dT))
+        #
+        # t2 = time.time()
+        # no_of_pagedowns = 20
+        # elem = driver.find_element_by_tag_name("body")
+        # while no_of_pagedowns:
+        #     elem.send_keys(Keys.PAGE_DOWN)
+        #     time.sleep(0.2)
+        #     no_of_pagedowns -= 1
+        # soup_toreturn = BeautifulSoup(driver.page_source, 'lxml')
+        #
+        # t3 = time.time()
+        # dT = t3 - t2
+        # print('soup + scroll time = {0}'.format(dT))
+
     return soup_toreturn
+
+
+
+def get_page_inf_scroll(fnc_url_link, scroll_num = 20):
+    ##Below is the new code for infinite scrolling
+    ##Source: https://stackoverflow.com/questions/21006940/how-to-load-all-entries-in-an-infinite-scroll-at-once-to-parse-the-html-in-pytho
+
+    t2 = time.time()
+    driver.get(fnc_url_link)
+    t3 = time.time()
+    dT = t3 - t2
+    print('get time = {0}'.format(dT))
+
+    t2 = time.time()
+
+    no_of_pagedowns = 50
+    elem = driver.find_element_by_tag_name("body")
+    while no_of_pagedowns:
+        # driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        for i in range(5):
+            elem.send_keys(Keys.PAGE_DOWN) #press down key x times
+        time.sleep(0.2)
+        temp_soup = BeautifulSoup(driver.page_source, 'lxml')
+        ratingsList = temp_soup.select('.field.title')
+        print('currently at {}'.format(len(ratingsList)))
+        no_of_pagedowns -= 1
+
+    soup_toreturn = BeautifulSoup(driver.page_source, 'lxml')
+
+    t3 = time.time()
+    dT = t3 - t2
+    print('soup + scroll time = {0}'.format(dT))
+
+    return soup_toreturn
+
+
+
 
 
 
@@ -184,6 +248,28 @@ url_location = 'https://www.goodreads.com/book/show/'
 #   Reviewers  |     '.user' (in a list)     | '#bookReview' (all in string)  # <--- 30 reviewers, link in the href here
 # User's Stats | '.profilePageUserStatsInfo' |             -                  #
 #-----------------------------------------------------------------------------#
+
+
+#--------------------------------#
+#  Goodreads Star Assignment     #
+#--------------------------------#
+#  Stars   |  field rating value #
+#--------------------------------#
+#   5      |  'it was amazing'   #
+#   4      |  'really liked it'  #
+#   3      |      'liked it'     #
+#   2      |     'it was ok'     #
+#   1      |  'did not like it'  #
+#   N/A    |       No key        #
+#--------------------------------#
+
+star_assignment = {}
+
+star_assignment['it was amazing']   = 5
+star_assignment['really liked it']  = 4
+star_assignment['liked it']         = 3
+star_assignment['it was ok']        = 2
+star_assignment['did not like it']  = 1
 
 
 #Below we will parse through one book
@@ -320,6 +406,7 @@ if not skip_scraping:
             #Step into the user's ratings page
             #NOTE: can change how the ratings are sorted by changing the "sort=ratings" bit
             t0 = time.time()
+            # ratings_soup = get_page_inf_scroll(goodreads_root + reviewer_info[i]['ratings link'])
             ratings_soup = get_page(goodreads_root + reviewer_info[i]['ratings link'])
             t1 = time.time()
             dT = t1 - t0
@@ -332,15 +419,36 @@ if not skip_scraping:
             #TODO: figure out how to make the javascript page scroll down to refesh to get all the ratings
 
             ratingsList = ratings_soup.select('.field.title')
-            ratingsScore = ratings_soup.select('.field.avg_rating')
+            ratingsScore_AVG = ratings_soup.select('.field.avg_rating') #This simply gets AVERAGE RATING OF THE BOOK
+            ratingsScore_OWN_temp = ratings_soup.select('.staticStars.notranslate')
+
+            #unravel the own score list to catch any unreviewed books that might be on the ratings for some reason
+            ratingsScore_OWN = []
+            for currPers in ratingsScore_OWN_temp:
+                try:
+                    tempRating = currPers.attrs['title']
+                    tempFloat = star_assignment[tempRating]
+                    ratingsScore_OWN.append(tempFloat)
+                except ValueError:
+                    print('')
+                    print('')
+                    print('ERROR')
+                    print('Found an unreviewed book in a users "rated books" list...hmmm...')
+                    print('ERROR')
+                    quit()
+
+
+
             reviewer_info[i]['ratings'] = []
             for j,currRating in enumerate(ratingsList):
                 if j == 0:
                     #first listed element is some formatting thing
                     continue
                 reviewer_info[i]['ratings'].append(currRating.contents[1].contents[1].attrs) #append the rating's dictionary
-                book_score = ratingsScore[j].text.split('\n')[0].split(' ')[-1] #extract score from the text
-                book_score = float(book_score)
+                book_AVG_score = ratingsScore_AVG[j].text.split('\n')[0].split(' ')[-1] #extract score from the text
+                book_AVG_score = float(book_AVG_score)
+
+                book_score = ratingsScore_OWN[j-1] #j-1 since the first element ISNT garbage...
                 reviewer_info[i]['ratings'][j-1]['score'] = book_score
                 print(j)
 
