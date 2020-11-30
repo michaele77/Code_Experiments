@@ -180,32 +180,29 @@ def get_page(fnc_url_link):
 
 def get_page_inf_scroll(fnc_url_link, scroll_num = 20):
     ##Below is the new code for infinite scrolling
-    ##Source: https://stackoverflow.com/questions/21006940/how-to-load-all-entries-in-an-infinite-scroll-at-once-to-parse-the-html-in-pytho
 
-    t2 = time.time()
-    driver.get(fnc_url_link)
-    t3 = time.time()
-    dT = t3 - t2
-    print('get time = {0}'.format(dT))
+    continueFlag = True
+    pageIter = 1
+    ratingsListFnc = []
+    while continueFlag:
+        append_string = '&page=' + str(pageIter)
+        driver.get(fnc_url_link+append_string)
 
-    t2 = time.time()
-
-    no_of_pagedowns = 50
-    elem = driver.find_element_by_tag_name("body")
-    while no_of_pagedowns:
-        # driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        for i in range(5):
-            elem.send_keys(Keys.PAGE_DOWN) #press down key x times
-        time.sleep(0.2)
         temp_soup = BeautifulSoup(driver.page_source, 'lxml')
-        ratingsList = temp_soup.select('.field.title')
-        print('currently at {}'.format(len(ratingsList)))
-        no_of_pagedowns -= 1
+        ratings_to_add = temp_soup.select('.field.title')[1:]
+        if not ratings_to_add:
+            print('We have hit the final page! final page count: {}'.format(pageIter))
+            continueFlag = False
+            #Note, this count counts the base page as 1 page...so only 1 extra page --> 2 total pages
+
+        else:
+            ratingsListFnc = ratingsListFnc + ratings_to_add
+            print('currently at {}'.format(len(ratingsListFnc)))
+            pageIter += 1
+
 
     soup_toreturn = BeautifulSoup(driver.page_source, 'lxml')
 
-    t3 = time.time()
-    dT = t3 - t2
     print('soup + scroll time = {0}'.format(dT))
 
     return soup_toreturn
@@ -407,7 +404,7 @@ if not skip_scraping:
             #NOTE: can change how the ratings are sorted by changing the "sort=ratings" bit
             t0 = time.time()
             # ratings_soup = get_page_inf_scroll(goodreads_root + reviewer_info[i]['ratings link'])
-            ratings_soup = get_page(goodreads_root + reviewer_info[i]['ratings link'])
+            ratings_soup = get_page_inf_scroll(goodreads_root + reviewer_info[i]['ratings link'])
             t1 = time.time()
             dT = t1 - t0
             print('ratings time = {0}'.format(dT))
