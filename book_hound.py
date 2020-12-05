@@ -89,6 +89,7 @@ import requests
 import numpy as np
 import pickle
 import sys
+import copy
 
 
 use_driver = input('Use chrome driver? [1 for yes]: ')
@@ -184,20 +185,43 @@ def get_page_inf_scroll(fnc_url_link, scroll_num = 20):
     continueFlag = True
     pageIter = 1
     ratingsListFnc = []
+    ratingsList = None
+    ratingsScore_AVG = None
+    ratingsScore_OWN_temp = None
+
+    page_limit = 5 ##Automatically stops if more than 5 pages
+    star_limit = 3 ##Automatically stops once 3 or less stars encountered TODO: what if NONE is encountered?
+
     while continueFlag:
         append_string = '&page=' + str(pageIter)
         driver.get(fnc_url_link+append_string)
 
         temp_soup = BeautifulSoup(driver.page_source, 'lxml')
-        ratings_to_add = temp_soup.select('.field.title')[1:]
-        if not ratings_to_add:
+
+        small_ratingsList = temp_soup.select('.field.title')
+        small_ratingsList.pop(0)
+        small_ratingsScore_AVG = temp_soup.select('.field.avg_rating')  # This simply gets AVERAGE RATING OF THE BOOK
+        small_ratingsScore_AVG.pop(0)
+        small_ratingsScore_OWN_temp = temp_soup.select('.staticStars.notranslate')
+        #No need to pop from the notranslate selection
+
+        if not ratingsList:
+            ratingsList = small_ratingsList.copy()
+            ratingsScore_AVG =  small_ratingsScore_AVG.copy()
+            ratingsScore_OWN_temp = small_ratingsScore_OWN_temp.copy()
+        else:
+            ratingsList = ratingsList + small_ratingsList.copy()
+            ratingsScore_AVG = ratingsScore_AVG + small_ratingsScore_AVG.copy()
+            ratingsScore_OWN_temp = ratingsScore_OWN_temp + small_ratingsScore_OWN_temp.copy()
+
+        # ratingsList_to_add = temp_soup.select('.field.title')[1:]
+        if not small_ratingsList:
             print('We have hit the final page! final page count: {}'.format(pageIter))
             continueFlag = False
             #Note, this count counts the base page as 1 page...so only 1 extra page --> 2 total pages
 
         else:
-            ratingsListFnc = ratingsListFnc + ratings_to_add
-            print('currently at {}'.format(len(ratingsListFnc)))
+            print('currently at {}'.format(len(ratingsList)))
             pageIter += 1
 
 
@@ -403,7 +427,7 @@ if not skip_scraping:
             #Step into the user's ratings page
             #NOTE: can change how the ratings are sorted by changing the "sort=ratings" bit
             t0 = time.time()
-            # ratings_soup = get_page_inf_scroll(goodreads_root + reviewer_info[i]['ratings link'])
+            # ratings_soup = get_page(goodreads_root + reviewer_info[i]['ratings link'])
             ratings_soup = get_page_inf_scroll(goodreads_root + reviewer_info[i]['ratings link'])
             t1 = time.time()
             dT = t1 - t0
@@ -608,6 +632,23 @@ pass #BREAKPOINT
 #       --> Swipe down for "you've read the book and didn't like it" => network improves by cutting unalike kindred
 #       --> Swipe right for "you haven't read this book, but interested" => add to will read books (no network change?)
 #       --> Swipe left for "you haven't read this book, but not interested => banned from appearing (no network change?)
+#---------------------------------------------------------#
+#              Speed Demon: Tips + Tricks                 #
+#---------------------------------------------------------#
+# Assume that we will be scraping B books
+#   Each book has N users
+#       Each user has an average of P ratings pages
+
+# Then, each user's links are:  T_user = P (1 to get to rating's page, then P-1 for subsequent page loads)
+# Each book's links are:        T_books = N*T_users + overhead (overhead is # of user pages to click on, assume 2)
+# Total links are:              T_total = B*T_books + overhead (overhead is # of book pages to click on, assume 1000)
+#                                       = B*(N*P + 2) + 1000
+
+# To convert to time, assume that we have 10 proxies, and each link takes ~1.5seconds
+#                               T_time [hours] = 1.5*T_total/10/3600 = 0.15*T_total/3600
+
+# If B == 50,000, N == 100, P == 2 --> Total links == 10,101,000 links == 420 hours
+# If B == 20,000, N == 150, P == 1 --> Total links == 3,000,000 links == 125 hours
 
 
 
