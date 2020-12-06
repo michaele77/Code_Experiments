@@ -189,7 +189,7 @@ def get_page_inf_scroll(fnc_url_link, scroll_num = 20):
     ratingsScore_AVG = None
     ratingsScore_OWN_temp = None
 
-    page_limit = 5 ##Automatically stops if more than 5 pages
+    page_limit = 15 ##Automatically stops if more than 5 pages
     star_limit = 3 ##Automatically stops once 3 or less stars encountered TODO: what if NONE is encountered?
 
     while continueFlag:
@@ -202,17 +202,40 @@ def get_page_inf_scroll(fnc_url_link, scroll_num = 20):
         small_ratingsList.pop(0)
         small_ratingsScore_AVG = temp_soup.select('.field.avg_rating')  # This simply gets AVERAGE RATING OF THE BOOK
         small_ratingsScore_AVG.pop(0)
-        small_ratingsScore_OWN_temp = temp_soup.select('.staticStars.notranslate')
-        #No need to pop from the notranslate selection
+        small_ratingsScore_OWN = temp_soup.select('.staticStars.notranslate')
+        # No need to pop from the notranslate selection
+
+        ############################
+        #####EXCTRACTION TIME#######
+        ############################
+
+        #Extract title string
+        small_ratingsList = [ currRating.contents[1].contents[1].attrs for currRating in small_ratingsList ]
+
+        #Extract the book's average rating from info string
+        small_ratingsScore_AVG = [ float(currAVG.text.split('\n')[0].split(' ')[-1]) for currAVG in small_ratingsScore_AVG ]
+
+        #Extract the actual score from the per-book rating
+        tempRatingList_0 = [ currPers.attrs['title'] for currPers in small_ratingsScore_OWN ]
+        tempRatingList_1 = [ star_assignment[tempRating] for tempRating in tempRatingList_0 ]
+        small_ratingsScore_OWN = tempRatingList_1.copy()
+
+        ############################
+        ####END EXCTRACTION TIME####
+        ############################
+
+
+
+
 
         if not ratingsList:
             ratingsList = small_ratingsList.copy()
             ratingsScore_AVG =  small_ratingsScore_AVG.copy()
-            ratingsScore_OWN_temp = small_ratingsScore_OWN_temp.copy()
+            ratingsScore_OWN = small_ratingsScore_OWN.copy()
         else:
             ratingsList = ratingsList + small_ratingsList.copy()
             ratingsScore_AVG = ratingsScore_AVG + small_ratingsScore_AVG.copy()
-            ratingsScore_OWN_temp = ratingsScore_OWN_temp + small_ratingsScore_OWN_temp.copy()
+            ratingsScore_OWN = ratingsScore_OWN + small_ratingsScore_OWN.copy()
 
         # ratingsList_to_add = temp_soup.select('.field.title')[1:]
         if not small_ratingsList:
@@ -220,16 +243,34 @@ def get_page_inf_scroll(fnc_url_link, scroll_num = 20):
             continueFlag = False
             #Note, this count counts the base page as 1 page...so only 1 extra page --> 2 total pages
 
+        elif pageIter >= page_limit:
+            print('We have hit the set page limit! final page count: {}'.format(pageIter))
+            continueFlag = False
+            # Note, this count counts the base page as 1 page...so only 1 extra page --> 2 total pages
+
+        elif any(temp_comp <= star_limit for temp_comp in small_ratingsScore_OWN):
+            print('We have hit the "moderately bad" rated books! final page count: {}'.format(pageIter))
+            #Remove any indices that are beyond the first 'setStar' rating
+            first_index_beyond = ratingsScore_OWN.index(star_limit)
+
+            ratingsList = ratingsList[0:first_index_beyond]
+            ratingsScore_AVG = ratingsScore_AVG[0:first_index_beyond]
+            ratingsScore_OWN = ratingsScore_OWN[0:first_index_beyond]
+
+            continueFlag = False
+            # Note, this count counts the base page as 1 page...so only 1 extra page --> 2 total pages
+
+
         else:
             print('currently at {}'.format(len(ratingsList)))
             pageIter += 1
 
 
-    soup_toreturn = BeautifulSoup(driver.page_source, 'lxml')
+    # soup_toreturn = BeautifulSoup(driver.page_source, 'lxml')
 
     print('soup + scroll time = {0}'.format(dT))
 
-    return soup_toreturn
+    return ratingsList, ratingsScore_AVG, ratingsScore_OWN
 
 
 
@@ -364,8 +405,9 @@ if try_threading_DOE:
     pass #BREAKPOINT
 
 
-urlNum = [1]      #Gets some harry potter book
-urlNum = [186074] #Gets the Name of the Wind
+urlNum = [1]        #some harry potter book
+urlNum = [186074]   #The Name of the Wind
+urlNum = [20518872] #The Three Body Problem
 
 if not skip_scraping:
     currTime = time.time()
@@ -428,7 +470,8 @@ if not skip_scraping:
             #NOTE: can change how the ratings are sorted by changing the "sort=ratings" bit
             t0 = time.time()
             # ratings_soup = get_page(goodreads_root + reviewer_info[i]['ratings link'])
-            ratings_soup = get_page_inf_scroll(goodreads_root + reviewer_info[i]['ratings link'])
+            # ratings_soup = get_page_inf_scroll(goodreads_root + reviewer_info[i]['ratings link'])
+            ratingsList, ratingsScore_AVG, ratingsScore_OWN  = get_page_inf_scroll(goodreads_root + reviewer_info[i]['ratings link'])
             t1 = time.time()
             dT = t1 - t0
             print('ratings time = {0}'.format(dT))
@@ -439,39 +482,12 @@ if not skip_scraping:
             #TODO: Get a prototype going
             #TODO: figure out how to make the javascript page scroll down to refesh to get all the ratings
 
-            ratingsList = ratings_soup.select('.field.title')
-            ratingsScore_AVG = ratings_soup.select('.field.avg_rating') #This simply gets AVERAGE RATING OF THE BOOK
-            ratingsScore_OWN_temp = ratings_soup.select('.staticStars.notranslate')
-
-            #unravel the own score list to catch any unreviewed books that might be on the ratings for some reason
-            ratingsScore_OWN = []
-            for currPers in ratingsScore_OWN_temp:
-                try:
-                    tempRating = currPers.attrs['title']
-                    tempFloat = star_assignment[tempRating]
-                    ratingsScore_OWN.append(tempFloat)
-                except ValueError:
-                    print('')
-                    print('')
-                    print('ERROR')
-                    print('Found an unreviewed book in a users "rated books" list...hmmm...')
-                    print('ERROR')
-                    quit()
-
-
 
             reviewer_info[i]['ratings'] = []
-            for j,currRating in enumerate(ratingsList):
-                if j == 0:
-                    #first listed element is some formatting thing
-                    continue
-                reviewer_info[i]['ratings'].append(currRating.contents[1].contents[1].attrs) #append the rating's dictionary
-                book_AVG_score = ratingsScore_AVG[j].text.split('\n')[0].split(' ')[-1] #extract score from the text
-                book_AVG_score = float(book_AVG_score)
-
-                book_score = ratingsScore_OWN[j-1] #j-1 since the first element ISNT garbage...
-                reviewer_info[i]['ratings'][j-1]['score'] = book_score
-                print(j)
+            for j in range(len(ratingsList)):
+                reviewer_info[i]['ratings'].append(ratingsList[j])
+                book_AVG_score = ratingsScore_AVG[j] #currently not used...include in the book node in the future
+                reviewer_info[i]['ratings'][j]['score'] = ratingsScore_OWN[j]
 
         pass #breakpoint
 
@@ -481,11 +497,11 @@ if not skip_scraping:
 
     ogRecLimit = sys.getrecursionlimit()
     sys.setrecursionlimit(100000)
-    with open('book_hound_vars/extracted_html_data.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
+    with open('book_hound_vars/extracted_html_data_ThreeBodyProblem_ratingPagelimit-15_userPages-1.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
         pickle.dump([book_info, reviewer_info], f)
 
     # Getting back the objects:
-    with open('book_hound_vars/extracted_html_data.pkl', 'rb') as f:  # Python 3: open(..., 'rb')
+    with open('book_hound_vars/extracted_html_data_ThreeBodyProblem_ratingPagelimit-15_userPages-1.pkl', 'rb') as f:  # Python 3: open(..., 'rb')
         book_info_ld, reviewer_info_ld = pickle.load(f)
 
     sys.setrecursionlimit(ogRecLimit)
@@ -546,7 +562,7 @@ ogRecLimit = sys.getrecursionlimit()
 sys.setrecursionlimit(100000)
 
 # Getting back the objects:
-with open('book_hound_vars/extracted_html_data_TNOTW.pkl', 'rb') as f:  # Python 3: open(..., 'rb')
+with open('book_hound_vars/extracted_html_data_ThreeBodyProblem_ratingPagelimit-15_userPages-1.pkl', 'rb') as f:  # Python 3: open(..., 'rb')
     book_info, reviewer_info = pickle.load(f)
 
 sys.setrecursionlimit(ogRecLimit)
@@ -607,6 +623,38 @@ for idx_user in range(userNum):
 
 
 pass #BREAKPOINT
+
+
+
+#---------------------------------------------------------#
+#                  Process the {Results}                  #
+#---------------------------------------------------------#
+
+
+##First, print the top 10 books, along with the number pointing to them
+users_pointing_num = [len(i.raters) for i in covered_books]
+
+#use numpy for index sorting
+top_10_idx = np.argsort(users_pointing_num)[-100:]
+print(top_10_idx)
+
+print('Top 10 searched books')
+print('[Title]: [Number of Users]')
+for currI in reversed(top_10_idx):
+    print('{0}: has {1} users digging it'.format( covered_books[currI].title, len(covered_books[currI].raters)))
+
+
+
+pass #BREAKPOINT
+
+
+
+#---------------------------------------------------------#
+#          Initiating App Prototyping Sequence            #
+#---------------------------------------------------------#
+
+
+
 
 
 #---------------------------------------------------------#
