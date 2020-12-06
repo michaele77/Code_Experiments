@@ -216,9 +216,12 @@ def get_page_inf_scroll(fnc_url_link, scroll_num = 20):
         small_ratingsScore_AVG = [ float(currAVG.text.split('\n')[0].split(' ')[-1]) for currAVG in small_ratingsScore_AVG ]
 
         #Extract the actual score from the per-book rating
-        tempRatingList_0 = [ currPers.attrs['title'] for currPers in small_ratingsScore_OWN ]
-        tempRatingList_1 = [ star_assignment[tempRating] for tempRating in tempRatingList_0 ]
-        small_ratingsScore_OWN = tempRatingList_1.copy()
+        for curri, currPers in enumerate(small_ratingsScore_OWN):
+            try:
+                small_ratingsScore_OWN[curri] = star_assignment[currPers.attrs['title']]
+            except:
+                small_ratingsScore_OWN[curri] = None
+
 
         ############################
         ####END EXCTRACTION TIME####
@@ -542,6 +545,7 @@ class UserNode:
         self.link           = input_reviewer_info['link']
         self.ratingsLink    = input_reviewer_info['ratings link']
         self.ratings        = input_reviewer_info['ratings'] #contains raw raters book list
+        self.match_score    = 1
 
         self.books          = [] #this variable will filter the self.ratings data, and will assign
 
@@ -652,6 +656,148 @@ pass #BREAKPOINT
 #---------------------------------------------------------#
 #          Initiating App Prototyping Sequence            #
 #---------------------------------------------------------#
+
+# 1) User enters favorite book and data is loaded (Omitted, assumed to already have data).
+# 2) User is presented with top algo pick (checked with the "have recommended list for no repeats)
+#       ~~Debugging: also display top 5-10 that the algo picked for sanity checking
+# 3) User is queried and inputs up, down, left, or right; book is stored in "have recommended" list
+#       Up    [A]: Book is stored in "have read, liked" list
+#       Down  [B]: Book is stored in "have read, didn't like" list
+#       Right [C]: Book is stored in "want to read" list
+#       Left  [D]: Book is stored in "do not want to read" list
+# 4) Nodes (user nodes) pointing to the book are searched, and their corresponding "match" score is adjusted as follows:
+#       If book is in [A]: match score += +read_match_adj
+#       If book is in [B]: match score += -read_match_adj
+#       If book is in [C]: match score += +nord_match_adj
+#       If book is in [D]: match score += -nord_match_adj
+#           For now, read_match_adj = 0.2 and nord_match_adj = 0.1
+# 5) Net is re-calculated. NOTE: For recalculation, the match score should be summed, not just number of users
+
+
+#Takes as input~~
+#   topN: number of top values to return from the sorted list (to display for debugging, mainly)
+def getTopBooks(topN = 5):
+    ##First, print the top 10 books, along with the number pointing to them
+    users_pointing_list = []
+    for currBook in covered_books:
+        temp_sum = 0
+        for currUser in currBook.raters:
+            temp_sum += currUser[0].match_score
+
+        users_pointing_list.append(temp_sum)
+
+    # use numpy for index sorting, make index 0 to be the most popular book
+    top_N_idx = list(np.argsort(users_pointing_list)[-topN:])
+    top_N_idx.reverse() #reverses list, otherwise -1 = most popular book
+
+    #return a list of the top N books based on the cumulative match score
+    top_books_list = [ covered_books[i] for i in top_N_idx ]
+    top_books_indx = top_N_idx
+
+    return top_books_list, top_books_indx
+
+def printTopBooks(top_books_list):
+    print('')
+    print('/////////////////////////////')
+    print('DEBUG: Printing top books...')
+
+    for i in top_books_list:
+        print(i.title)
+
+    print('/////////////////////////////')
+    print('')
+
+
+def updateMatchScore(linked_users, adjust_val):
+
+    for user_to_update in linked_users:
+        user_to_update.match_score += adjust_val
+
+
+
+
+print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+print('************************************************************************')
+print('************************************************************************')
+print('************************************************************************')
+print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+print('')
+print('Initializing App Prototping Sequence!')
+print('')
+print('')
+
+#initialixe values
+read_match_adj   = 0.5
+nord_match_adj   = 0.25
+
+read_like_list   = []
+read_nlike_list  = []
+nread_like_list  = []
+nread_nlike_list = []
+
+
+print('Users Favorite Book: {0}'.format( book_info['title'] ))
+
+
+
+while True:
+    #Sort and get the top book based on match score
+    top_books_list, top_books_indx = getTopBooks(topN=5)
+
+    #Display recommended book
+    top_book = top_books_list[0]
+    print('')
+    print('Recommended Book:')
+    print('-----------------')
+    print(top_book.title)
+    print('')
+    print('')
+    printTopBooks(top_books_list)
+
+    #Query user, use keys for simplicity
+    print('What do ya think?')
+    print('[W] ~ UP    = have read it, liked it')
+    print('[S] ~ DOWN  = have read it, didnt like it')
+    print('[D] ~ RIGHT = would like to read it')
+    print('[A] ~ LEFT  = would not like to read it')
+    print('[Q] ~ DOUBLE TAP = 50/50 not sure...put back into the pile and re-recommend after like 50 books')
+    print('')
+    userIn = input('INPUT>> ')
+
+    #Get a list of users related to the book
+    linked_users = [i[0] for i in top_book.raters]
+
+    #According to user's input, adjust the linked users' match scores
+
+    if userIn.lower() == 'w':
+        #User has read it and has like it
+        read_like_list.append(top_book)
+        updateMatchScore(linked_users, read_match_adj)
+
+    elif userIn.lower() == 's':
+        #User has read it and didnt like it
+        read_nlike_list.append(top_book)
+        updateMatchScore(linked_users, -read_match_adj)
+
+    elif userIn.lower() == 'd':
+        #User has not read it but wants to
+        nread_like_list.append(top_book)
+        updateMatchScore(linked_users, nord_match_adj)
+
+    elif userIn.lower() == 'a':
+        #User has not read it and doesnt want to
+        nread_nlike_list.append(top_book)
+        updateMatchScore(linked_users, -nord_match_adj)
+
+
+    #Now remove the top book from the covered_books list
+    #That book is now referenced in one of the 4 sub lists, so dont need it in covered_books anymore
+    covered_books.pop( top_books_indx[0] )
 
 
 
