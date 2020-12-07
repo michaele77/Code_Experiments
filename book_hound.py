@@ -254,7 +254,21 @@ def get_page_inf_scroll(fnc_url_link, scroll_num = 20):
         elif any(temp_comp <= star_limit for temp_comp in small_ratingsScore_OWN):
             print('We have hit the "moderately bad" rated books! final page count: {}'.format(pageIter))
             #Remove any indices that are beyond the first 'setStar' rating
-            first_index_beyond = ratingsScore_OWN.index(star_limit)
+            try:
+                first_index_beyond = ratingsScore_OWN.index(star_limit)
+            except:
+                try:
+                    first_index_beyond = ratingsScore_OWN.index(2)
+                except:
+                    try:
+                        first_index_beyond = ratingsScore_OWN.index(1)
+                    except:
+                        try:
+                            first_index_beyond = ratingsScore_OWN.index(None)
+                        except:
+                            first_index_beyond = 1 #final recourse...this should never happen
+
+
 
             ratingsList = ratingsList[0:first_index_beyond]
             ratingsScore_AVG = ratingsScore_AVG[0:first_index_beyond]
@@ -411,6 +425,7 @@ if try_threading_DOE:
 urlNum = [1]        #some harry potter book
 urlNum = [20518872] #The Three Body Problem
 urlNum = [186074]   #The Name of the Wind
+# urlNum = [13569581] #Blood Song
 
 
 if not skip_scraping:
@@ -523,11 +538,11 @@ if not skip_scraping:
 
     ogRecLimit = sys.getrecursionlimit()
     sys.setrecursionlimit(100000)
-    with open('book_hound_vars/extracted_html_data_TNOTW_ratingPagelimit-5_userPages-10.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
+    with open('book_hound_vars/extracted_html_data_TNOTW_ratingPagelimit-3_userPages-10.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
         pickle.dump([book_info, reviewer_info], f)
 
     # Getting back the objects:
-    with open('book_hound_vars/extracted_html_data_TNOTW_ratingPagelimit-5_userPages-10.pkl', 'rb') as f:  # Python 3: open(..., 'rb')
+    with open('book_hound_vars/extracted_html_data_TNOTW_ratingPagelimit-3_userPages-10.pkl', 'rb') as f:  # Python 3: open(..., 'rb')
         book_info_ld, reviewer_info_ld = pickle.load(f)
 
     sys.setrecursionlimit(ogRecLimit)
@@ -592,7 +607,7 @@ ogRecLimit = sys.getrecursionlimit()
 sys.setrecursionlimit(100000)
 
 # Getting back the objects:
-with open('book_hound_vars/extracted_html_data_TNOTW_ratingPagelimit-5_userPages-10.pkl', 'rb') as f:  # Python 3: open(..., 'rb')
+with open('book_hound_vars/extracted_html_data_TNOTW_ratingPagelimit-3_userPages-10.pkl', 'rb') as f:  # Python 3: open(..., 'rb')
     book_info, reviewer_info = pickle.load(f)
 
 sys.setrecursionlimit(ogRecLimit)
