@@ -189,7 +189,7 @@ def get_page_inf_scroll(fnc_url_link, scroll_num = 20):
     ratingsScore_AVG = None
     ratingsScore_OWN_temp = None
 
-    page_limit = 15 ##Automatically stops if more than 5 pages
+    page_limit = 5 ##Automatically stops if more than 5 pages
     star_limit = 3 ##Automatically stops once 3 or less stars encountered TODO: what if NONE is encountered?
 
     while continueFlag:
@@ -409,8 +409,9 @@ if try_threading_DOE:
 
 
 urlNum = [1]        #some harry potter book
-urlNum = [186074]   #The Name of the Wind
 urlNum = [20518872] #The Three Body Problem
+urlNum = [186074]   #The Name of the Wind
+
 
 if not skip_scraping:
     currTime = time.time()
@@ -430,13 +431,35 @@ if not skip_scraping:
             print('Book {0}: {1}'.format(i,v))
 
         #Now, step into the 30 reviewers on the first page
-        book_info['reviewers'] = soup.select('.user') #Raw format (not text) of all reviewers
+        book_info['reviewers'] = list(soup.select('.user')) #Raw format (not text) of all reviewers, CONVERT TO LIST FOR EASY CONCATENATION
+
+        #Now we need to close the popup that happens if we're not logged in...Find the close button by xpath:
+        close_XPATH = '/html/body/div[3]/div/div/div[1]/button/img'
+        element = driver.find_element_by_xpath(close_XPATH)
+        element.click()
+        time.sleep(0.95)
+
+        #Append however many user pages we want to go through!
+        user_page_num = 10
+        for cnt_i in range(user_page_num):
+            #instead of grabbing href link from the parsed XML, use a selenium click
+            #won't work otherwise (since it uses a JSON request to get the next page)
+            element = driver.find_element_by_class_name('next_page')
+            element.click()
+
+            curr_page_soup = BeautifulSoup(driver.page_source, 'lxml')
+            curr_page_reviews = list(curr_page_soup.select('.user'))
+            book_info['reviewers'] = book_info['reviewers'] + curr_page_reviews
+
+            time.sleep(0.95)  # to avoid the random-length HTML garbage anti-attack mechanism
+
+
 
         reviewer_info = []
         for i, curr_user in enumerate(book_info['reviewers']):
             print('Reviewer {0} ~~~~~~~~~~~~~~~~~~'.format(i))
             reviewer_info.append({})
-            reviewer_info[i]['name'] = curr_user.attrs['title']
+            reviewer_info[i]['name'] = curr_user.attrs['name']
             reviewer_info[i]['link'] = curr_user.attrs['href']
 
             #Step into the user's page
@@ -500,11 +523,11 @@ if not skip_scraping:
 
     ogRecLimit = sys.getrecursionlimit()
     sys.setrecursionlimit(100000)
-    with open('book_hound_vars/extracted_html_data_ThreeBodyProblem_ratingPagelimit-15_userPages-1.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
+    with open('book_hound_vars/extracted_html_data_TNOTW_ratingPagelimit-5_userPages-10.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
         pickle.dump([book_info, reviewer_info], f)
 
     # Getting back the objects:
-    with open('book_hound_vars/extracted_html_data_ThreeBodyProblem_ratingPagelimit-15_userPages-1.pkl', 'rb') as f:  # Python 3: open(..., 'rb')
+    with open('book_hound_vars/extracted_html_data_TNOTW_ratingPagelimit-5_userPages-10.pkl', 'rb') as f:  # Python 3: open(..., 'rb')
         book_info_ld, reviewer_info_ld = pickle.load(f)
 
     sys.setrecursionlimit(ogRecLimit)
@@ -513,7 +536,10 @@ if not skip_scraping:
 #book_info     --> dict('title', 'author', 'meta', 'details', 'reviewers')
 #                          |        |        |         |          |
 #                          V        V        V         V          V
-#                         str      str      str       str     list(30*str)
+#                         str      str      str       str     list(30*obj) --> attrs('title', 'href', 'name')
+#                                                                                       |        |       |
+#                                                                                       V        V       V
+#                                                                                      str      str     str
 
 #reviewer_info --> list(30*dict) --> dict('name', 'link', 'ratings link', 'ratings')
 #                                           |       |           |             |
@@ -566,7 +592,7 @@ ogRecLimit = sys.getrecursionlimit()
 sys.setrecursionlimit(100000)
 
 # Getting back the objects:
-with open('book_hound_vars/extracted_html_data_ThreeBodyProblem_ratingPagelimit-15_userPages-1.pkl', 'rb') as f:  # Python 3: open(..., 'rb')
+with open('book_hound_vars/extracted_html_data_TNOTW_ratingPagelimit-5_userPages-10.pkl', 'rb') as f:  # Python 3: open(..., 'rb')
     book_info, reviewer_info = pickle.load(f)
 
 sys.setrecursionlimit(ogRecLimit)
