@@ -189,7 +189,7 @@ def get_page_inf_scroll(fnc_url_link, scroll_num = 20):
     ratingsScore_AVG = None
     ratingsScore_OWN_temp = None
 
-    page_limit = 5 ##Automatically stops if more than 5 pages
+    page_limit = 6 ##Automatically stops if more than 5 pages
     star_limit = 3 ##Automatically stops once 3 or less stars encountered TODO: what if NONE is encountered?
 
     while continueFlag:
@@ -228,9 +228,6 @@ def get_page_inf_scroll(fnc_url_link, scroll_num = 20):
         ############################
 
 
-
-
-
         if not ratingsList:
             ratingsList = small_ratingsList.copy()
             ratingsScore_AVG =  small_ratingsScore_AVG.copy()
@@ -239,6 +236,11 @@ def get_page_inf_scroll(fnc_url_link, scroll_num = 20):
             ratingsList = ratingsList + small_ratingsList.copy()
             ratingsScore_AVG = ratingsScore_AVG + small_ratingsScore_AVG.copy()
             ratingsScore_OWN = ratingsScore_OWN + small_ratingsScore_OWN.copy()
+
+        # To solve any bugs that arise when the ratings are None (not rated)
+        for temp_iter in range(len(small_ratingsScore_OWN)):
+            if small_ratingsScore_OWN[temp_iter] is None:
+                small_ratingsScore_OWN[temp_iter] = 0
 
         # ratingsList_to_add = temp_soup.select('.field.title')[1:]
         if not small_ratingsList:
@@ -250,6 +252,8 @@ def get_page_inf_scroll(fnc_url_link, scroll_num = 20):
             print('We have hit the set page limit! final page count: {}'.format(pageIter))
             continueFlag = False
             # Note, this count counts the base page as 1 page...so only 1 extra page --> 2 total pages
+
+
 
         elif any(temp_comp <= star_limit for temp_comp in small_ratingsScore_OWN):
             print('We have hit the "moderately bad" rated books! final page count: {}'.format(pageIter))
@@ -426,6 +430,9 @@ urlNum = [1]        #some harry potter book
 urlNum = [20518872] #The Three Body Problem
 urlNum = [186074]   #The Name of the Wind
 # urlNum = [13569581] #Blood Song
+urlNum = [14891]    #A Tree Grows in Brooklyn (Belindas fav)
+urlNum = [28077464] #Night school (gma fav)
+urlNum = [61535] #Selfish gene (sunbins fav)
 
 
 if not skip_scraping:
@@ -455,7 +462,7 @@ if not skip_scraping:
         time.sleep(0.95)
 
         #Append however many user pages we want to go through!
-        user_page_num = 10
+        user_page_num = 4
         for cnt_i in range(user_page_num):
             #instead of grabbing href link from the parsed XML, use a selenium click
             #won't work otherwise (since it uses a JSON request to get the next page)
@@ -538,11 +545,11 @@ if not skip_scraping:
 
     ogRecLimit = sys.getrecursionlimit()
     sys.setrecursionlimit(100000)
-    with open('book_hound_vars/extracted_html_data_TNOTW_ratingPagelimit-3_userPages-10.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
+    with open('book_hound_vars/extracted_html_data_selfishgene_ratingPagelimit-6_userPages-4.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
         pickle.dump([book_info, reviewer_info], f)
 
     # Getting back the objects:
-    with open('book_hound_vars/extracted_html_data_TNOTW_ratingPagelimit-3_userPages-10.pkl', 'rb') as f:  # Python 3: open(..., 'rb')
+    with open('book_hound_vars/extracted_html_data_selfishgene_ratingPagelimit-6_userPages-4.pkl', 'rb') as f:  # Python 3: open(..., 'rb')
         book_info_ld, reviewer_info_ld = pickle.load(f)
 
     sys.setrecursionlimit(ogRecLimit)
@@ -607,7 +614,7 @@ ogRecLimit = sys.getrecursionlimit()
 sys.setrecursionlimit(100000)
 
 # Getting back the objects:
-with open('book_hound_vars/extracted_html_data_TNOTW_ratingPagelimit-3_userPages-10.pkl', 'rb') as f:  # Python 3: open(..., 'rb')
+with open('book_hound_vars/extracted_html_data_selfishgene_ratingPagelimit-6_userPages-4.pkl', 'rb') as f:  # Python 3: open(..., 'rb')
     book_info, reviewer_info = pickle.load(f)
 
 sys.setrecursionlimit(ogRecLimit)
@@ -798,7 +805,7 @@ while True:
     print(top_book.title)
     print('')
     print('')
-    printTopBooks(top_books_list)
+    # printTopBooks(top_books_list)
 
     #Query user, use keys for simplicity
     print('What do ya think?')
