@@ -433,6 +433,7 @@ urlNum = [186074]   #The Name of the Wind
 urlNum = [14891]    #A Tree Grows in Brooklyn (Belindas fav)
 urlNum = [28077464] #Night school (gma fav)
 urlNum = [61535] #Selfish gene (sunbins fav)
+urlNum = [13376] #The House of scorpion (Kim's fav)
 
 
 if not skip_scraping:
@@ -456,10 +457,11 @@ if not skip_scraping:
         book_info['reviewers'] = list(soup.select('.user')) #Raw format (not text) of all reviewers, CONVERT TO LIST FOR EASY CONCATENATION
 
         #Now we need to close the popup that happens if we're not logged in...Find the close button by xpath:
-        close_XPATH = '/html/body/div[3]/div/div/div[1]/button/img'
-        element = driver.find_element_by_xpath(close_XPATH)
-        element.click()
-        time.sleep(0.95)
+        if use_driver:
+            close_XPATH = '/html/body/div[3]/div/div/div[1]/button/img'
+            element = driver.find_element_by_xpath(close_XPATH)
+            element.click()
+            time.sleep(0.95)
 
         #Append however many user pages we want to go through!
         user_page_num = 4
@@ -545,11 +547,11 @@ if not skip_scraping:
 
     ogRecLimit = sys.getrecursionlimit()
     sys.setrecursionlimit(100000)
-    with open('book_hound_vars/extracted_html_data_selfishgene_ratingPagelimit-6_userPages-4.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
+    with open('book_hound_vars/extracted_html_data_HouseofScorpion_ratingPagelimit-6_userPages-4.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
         pickle.dump([book_info, reviewer_info], f)
 
     # Getting back the objects:
-    with open('book_hound_vars/extracted_html_data_selfishgene_ratingPagelimit-6_userPages-4.pkl', 'rb') as f:  # Python 3: open(..., 'rb')
+    with open('book_hound_vars/extracted_html_data_HouseofScorpion_ratingPagelimit-6_userPages-4.pkl', 'rb') as f:  # Python 3: open(..., 'rb')
         book_info_ld, reviewer_info_ld = pickle.load(f)
 
     sys.setrecursionlimit(ogRecLimit)
@@ -614,7 +616,7 @@ ogRecLimit = sys.getrecursionlimit()
 sys.setrecursionlimit(100000)
 
 # Getting back the objects:
-with open('book_hound_vars/extracted_html_data_selfishgene_ratingPagelimit-6_userPages-4.pkl', 'rb') as f:  # Python 3: open(..., 'rb')
+with open('book_hound_vars/extracted_html_data_ATGIB_ratingPagelimit-6_userPages-4.pkl', 'rb') as f:  # Python 3: open(..., 'rb')
     book_info, reviewer_info = pickle.load(f)
 
 sys.setrecursionlimit(ogRecLimit)
